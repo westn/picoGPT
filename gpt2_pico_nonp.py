@@ -198,6 +198,25 @@ def ffn(x, c_fc, c_proj):
     return linear(gelu(linear(x, **c_fc)), **c_proj)
 
 
+# attention helper function start
+
+
+def transpose(matrix):
+    """
+    Transposes a given 2D list (matrix).
+
+    Args:
+        matrix: A 2D list representing a matrix.
+
+    Returns:
+        A transposed 2D list (matrix).
+    """
+    return list(map(list, zip(*matrix)))
+
+
+# attention helper function end
+
+
 def attention(q, k, v, mask):
     """
     Applies attention mechanism to the input arrays.
@@ -211,7 +230,19 @@ def attention(q, k, v, mask):
     Returns:
         An array with applied attention mechanism.
     """
-    return softmax(q @ k.T / np.sqrt(q.shape[-1]) + mask) @ v
+    qk_matmul = matmul(q, transpose(k))  # Replacing '@' operation
+    scaled_attention_logits = [
+        [ele / sqrt(len(q[0])) for ele in row] for row in qk_matmul
+    ]
+
+    # Adding mask
+    for i in range(len(scaled_attention_logits)):
+        for j in range(len(scaled_attention_logits[i])):
+            scaled_attention_logits[i][j] += mask[i][j]
+
+    attention_weights = softmax(scaled_attention_logits)
+    output = matmul(attention_weights, v)
+    return output
 
 
 # mha helper functions start
