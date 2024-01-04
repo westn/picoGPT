@@ -230,7 +230,7 @@ def attention(q, k, v, mask):
     Returns:
         An array with applied attention mechanism.
     """
-    qk_matmul = matmul(q, transpose(k))  # Replacing '@' operation
+    qk_matmul = matmul(q, transpose(k))
     scaled_attention_logits = [
         [ele / sqrt(len(q[0])) for ele in row] for row in qk_matmul
     ]
@@ -385,10 +385,20 @@ def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):
     Returns:
         The output array of the transformer network.
     """
-    x = wte[inputs] + wpe[range(len(inputs))]
+    # Combining token embeddings with positional embeddings
+    x = [wte[i] + wpe[j] for i, j in zip(inputs, range(len(inputs)))]
+
+    # Processing through transformer blocks
     for block in blocks:
         x = transformer_block(x, **block, n_head=n_head)
-    return layer_norm(x, **ln_f) @ wte.T
+
+    # Final layer normalization
+    normalized_x = layer_norm(x, **ln_f)
+
+    # Matrix multiplication with transposed wte
+    output = matmul(normalized_x, transpose(wte))
+
+    return output
 
 
 def generate(inputs, params, n_head, n_tokens_to_generate):
