@@ -29,8 +29,26 @@ def softmax(x):
     Returns:
         An array with applied softmax function
     """
-    exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
-    return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
+    def compute_softmax(row):
+        """ Compute softmax for a single array. """
+        # Find max value for numerical stability
+        row_max = max(row)
+        # Calculate exponentials of adjusted values
+        exp_values = [math.exp(item - row_max) for item in row]
+        # Calculate the sum of the exponentials
+        sum_exp_values = sum(exp_values)
+        # Calculate softmax for each value in the row
+        return [item / sum_exp_values for item in exp_values]
+
+    # Check if x is a single list or a list of lists, and convert to list if necessary
+    if not isinstance(x[0], list):
+        x = [x]
+
+    # Apply softmax to each row
+    softmax_output = [compute_softmax(row) for row in x]
+
+    # Flatten the output if the original input was a single list
+    return softmax_output if len(softmax_output) > 1 else softmax_output[0]
 
 def layer_norm(x, g, b, eps: float = 1e-5):
     """
