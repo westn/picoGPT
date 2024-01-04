@@ -1,4 +1,3 @@
-import numpy as np
 from math import tanh, sqrt, pi, exp
 
 # General helper functions start
