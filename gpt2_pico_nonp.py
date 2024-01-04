@@ -1,6 +1,45 @@
 import numpy as np
 from math import tanh, sqrt, pi, exp
 
+# General helper functions start
+
+
+def matmul(A, B):
+    """
+    Performs matrix multiplication on two matrices.
+
+    Args:
+        A: First matrix (list of lists).
+        B: Second matrix (list of lists).
+
+    Returns:
+        List of lists: Result of matrix multiplication.
+    """
+    if not (isinstance(A, list) and isinstance(B, list)):
+        raise TypeError("Both A and B must be lists")
+
+    # Validate dimensions
+    if len(A[0]) != len(B):
+        raise ValueError("Incompatible dimensions for matrix multiplication")
+
+    # Transpose of second matrix for easier row-column multiplication
+    B_transposed = list(zip(*B))
+
+    # Perform multiplication
+    result = []
+    for row in A:
+        result_row = []
+        for col in B_transposed:
+            # Dot product of rows of A and columns of B
+            dot_product = sum(a_elem * b_elem for a_elem, b_elem in zip(row, col))
+            result_row.append(dot_product)
+        result.append(result_row)
+
+    return result
+
+
+# General helper functions end
+
 
 def gelu(x):
     """
@@ -132,7 +171,16 @@ def linear(x, w, b):
     Returns:
         numpy.ndarray: Linearly transformed array.
     """
-    return x @ w + b
+    # Perform matrix multiplication
+    product = matmul(x, w)
+
+    # Add bias to each element
+    transformed = []
+    for product_row, bias_element in zip(product, b):
+        transformed_row = [element + bias_element for element in product_row]
+        transformed.append(transformed_row)
+
+    return transformed
 
 
 def ffn(x, c_fc, c_proj):
