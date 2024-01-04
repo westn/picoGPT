@@ -166,6 +166,85 @@ def attention(q, k, v, mask):
     return softmax(q @ k.T / np.sqrt(q.shape[-1]) + mask) @ v
 
 
+# mha helper functions start
+
+
+def split_list(lst, n):
+    """Splits a list into n approximately equal parts."""
+    k, m = divmod(len(lst), n)
+    return [lst[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n)]
+
+
+def get_qkv_heads(x, n_head):
+    """
+    Refactored part of the mha function to split x into qkv_heads without NumPy.
+
+    Args:
+        x: Input array (assumed to be a nested list).
+        n_head: Number of attention heads.
+
+    Returns:
+        A list of qkv_heads.
+    """
+    # Split x into 3 equal parts along the last dimension (assuming x is a 2D list)
+    split_x = split_list(x, 3)
+
+    # Further split each part into n_head parts along the last dimension
+    qkv_heads = [split_list(part, n_head) for part in split_x]
+
+    # Flattening the list to match the structure of np.split().map().split()
+    flattened_qkv_heads = []
+    for group in zip(*qkv_heads):
+        for item in group:
+            flattened_qkv_heads.append(item)
+
+    return flattened_qkv_heads
+
+
+def create_lower_triangular_matrix(size):
+    """
+    Creates a lower triangular matrix filled with ones, with zeros elsewhere.
+
+    Args:
+        size (int): The size of the matrix (number of rows and columns).
+
+    Returns:
+        List[List[float]]: A lower triangular matrix.
+    """
+    return [[1.0 if j <= i else 0.0 for j in range(size)] for i in range(size)]
+
+
+def apply_causal_mask(matrix, mask_value=-1e10):
+    """
+    Applies a causal mask to the given matrix by subtracting each element from 1
+    and then multiplying by a large negative number (mask_value).
+
+    Args:
+        matrix (List[List[float]]): The matrix to apply the causal mask to.
+        mask_value (float): The value to multiply after subtracting from 1.
+
+    Returns:
+        List[List[float]]: The matrix with the causal mask applied.
+    """
+    return [[(1 - element) * mask_value for element in row] for row in matrix]
+
+
+def flatten_list(nested_list):
+    """
+    Flattens a nested list into a single list.
+
+    Args:
+        nested_list: A list of lists.
+
+    Returns:
+        A single flattened list.
+    """
+    return [item for sublist in nested_list for item in sublist]
+
+
+# mha helper functions end
+
+
 def mha(x, c_attn, c_proj, n_head):
     """
     Applies multi-head attention mechanism to the input array.
@@ -180,12 +259,15 @@ def mha(x, c_attn, c_proj, n_head):
         An array with applied multi-head attention mechanism.
     """
     x = linear(x, **c_attn)
-    qkv_heads = list(
-        map(lambda x: np.split(x, n_head, axis=-1), np.split(x, 3, axis=-1))
-    )
-    causal_mask = (1 - np.tri(x.shape[0], dtype=x.dtype)) * -1e10
+    qkv_heads = get_qkv_heads(x, n_head)
+    matrix_size = len(x)  # Assuming x is a square 2D list
+    lower_triangular_matrix = create_lower_triangular_matrix(matrix_size)
+    causal_mask = apply_causal_mask(lower_triangular_matrix)
     out_heads = [attention(q, k, v, causal_mask) for q, k, v in zip(*qkv_heads)]
-    x = linear(np.hstack(out_heads), **c_proj)
+    # Flatten the output heads into a single list
+    flattened_out_heads = flatten_list(out_heads)
+    # Apply the linear transformation
+    x = linear(flattened_out_heads, **c_proj)
     return x
 
 
