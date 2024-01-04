@@ -11,10 +11,13 @@ def gelu(x):
     Returns:
         An array with applied activation function.
     """
+    def gelu_single_value(val: float) -> float:
+        return 0.5 * val * (1 + math.tanh(math.sqrt(2 / math.pi) * (val + 0.044715 * val**3)))
+
     if isinstance(x, list):
-        return [0.5 * val * (1 + tanh(sqrt(2 / pi) * (val + 0.044715 * val ** 3))) for val in x]
+        return [gelu_single_value(val) for val in x]
     else:
-        return 0.5 * x * (1 + tanh(sqrt(2 / pi) * (x + 0.044715 * x ** 3)))
+        gelu_single_value(x)
 
 def softmax(x):
     """
