@@ -170,6 +170,17 @@ def linear(x, w, b):
     Returns:
         numpy.ndarray: Linearly transformed array.
     """
+    # Ensure x is a list of lists
+    if not isinstance(x, list) or not all(isinstance(xi, list) for xi in x):
+        raise TypeError("Input x must be a list of lists")
+
+    # Ensure w is a list of lists
+    if not isinstance(w, list):
+        raise TypeError(f"Input w is not a list, but a {type(w)}")
+    for wi in w:
+        if not isinstance(wi, list):
+            raise TypeError(f"Element in w is not a list, but a {type(wi)}")
+
     # Perform matrix multiplication
     product = matmul(x, w)
 
@@ -425,11 +436,13 @@ def generate(inputs, params, n_head, n_tokens_to_generate):
         Returns:
             An integer representing the index of the maximum logit value.
         """
-        return max(range(len(logits)), key=lambda index: logits[index])
+        last_logits = logits[-1]
+        max_value = max(last_logits)
+        return last_logits.index(max_value)
 
     for _ in tqdm(range(n_tokens_to_generate), "generating"):
         logits = gpt2(inputs, **params, n_head=n_head)
-        next_id = get_next_token_id(logits[-1])
+        next_id = get_next_token_id(logits)
         inputs.append(int(next_id))
     return inputs[len(inputs) - n_tokens_to_generate :]
 
@@ -440,7 +453,7 @@ def main(
     model_size: str = "124M",
     models_dir: str = "models",
 ):
-    from utils import load_encoder_hparams_and_params
+    from utils_nonp import load_encoder_hparams_and_params
 
     encoder, hparams, params = load_encoder_hparams_and_params(model_size, models_dir)
     input_ids = encoder.encode(prompt)
