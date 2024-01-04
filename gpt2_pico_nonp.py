@@ -29,7 +29,7 @@ def softmax(x):
     Returns:
         An array with applied softmax function
     """
-    def compute_softmax(row):
+    def calculate_softmax_for_row(row):
         """ Compute softmax for a single array. """
         # Find max value for numerical stability
         row_max = max(row)
@@ -45,10 +45,46 @@ def softmax(x):
         x = [x]
 
     # Apply softmax to each row
-    softmax_output = [compute_softmax(row) for row in x]
+    softmax_output = [calculate_softmax_for_row(row) for row in x]
 
     # Flatten the output if the original input was a single list
     return softmax_output if len(softmax_output) > 1 else softmax_output[0]
+
+# layer_norm helper functions start
+def calculate_mean(values):
+    """Calculate the mean of a list of values."""
+    return sum(values) / len(values)
+
+def calculate_standard_deviation(values, mean, eps):
+    """Calculate the standard deviation of a list of values based on the mean."""
+    variance = sum((value - mean) ** 2 for value in values) / len(values)
+    return math.sqrt(variance + eps)
+
+def normalize_values(values, mean, std_dev):
+    """Normalize a list of values given the mean and standard deviation."""
+    return [(value - mean) / std_dev for value in values]
+
+def apply_scale_and_shift(normalized_values, scales, shifts):
+    """
+    Apply scaling and shifting to the normalized values.
+
+    Args:
+        normalized_values: List of normalized values.
+        scales: List of scale factors.
+        shifts: List of shift values.
+
+    Returns:
+        List of scaled and shifted values.
+    """
+    scaled_and_shifted_values = []
+    for normalized, scale, shift in zip(normalized_values, scales, shifts):
+        scaled = normalized * scale
+        shifted = scaled + shift
+        scaled_and_shifted_values.append(shifted)
+
+    return scaled_and_shifted_values
+
+# layer_norm helper functions end
 
 def layer_norm(x, g, b, eps: float = 1e-5):
     """
@@ -63,9 +99,15 @@ def layer_norm(x, g, b, eps: float = 1e-5):
     Returns:
         A layer normalized array.
     """
-    mean = np.mean(x, axis=-1, keepdims=True)
-    variance = np.var(x, axis=-1, keepdims=True)
-    return g * (x - mean) / np.sqrt(variance + eps) + b
+    normalized_x = []
+    for xi in x:
+        mean_xi = calculate_mean(xi)
+        std_dev_xi = calculate_standard_deviation(xi, mean_xi, eps)
+        normalized_values = normalize_values(xi, mean_xi, std_dev_xi)
+        scaled_and_shifted_values = apply_scale_and_shift(normalized_values, g, b)
+        normalized_x.append(scaled_and_shifted_values)
+
+    return normalized_x
 
 def linear(x, w, b):
     """
